@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>SPARE SYNC · AI PARTS MATCHING</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-dark: #0b0d10;
+      --bg-panel: #121418;
+      --gold: #fbbf24;
+      --gold-glow: rgba(251,191,36,0.3);
+      --silver: #9ca3af;
+      --silver-light: #d1d5db;
+      --green-match: #10b981;
+      --gradient-bg: radial-gradient(circle at 30% 40%, #1e293b, #0f1117 80%);
+      --select-bg: linear-gradient(145deg, #1f2a3a, #0f172a);
+      --select-border: linear-gradient(90deg, #fbbf24, #a78bfa, #6ee7b7);
+      --chat-bg: #0f1117;
+    }
+    .splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0b0d10, #0f1117, #121418);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10001;
+      animation: fadeOut 2s ease-out 3s forwards;
+    }
+    @keyframes fadeOut { 0% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
+    .splash-content { text-align: center; animation: splashScale 1.2s cubic-bezier(0.34, 1.2, 0.64, 1) forwards; }
+    @keyframes splashScale { 0% { transform: scale(0.3); opacity: 0; filter: blur(10px); } 60% { transform: scale(1.08); opacity: 0.9; } 100% { transform: scale(1); opacity: 1; filter: blur(0); } }
+    .splash-logo { font-size: clamp(3rem, 12vw, 5rem); font-weight: 800; background: linear-gradient(135deg, #fcd34d, #fbbf24, #a78bfa, #6ee7b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-size: 300% 300%; animation: gradientShift 2.5s ease infinite, textGlow 1.2s ease-out; letter-spacing: -0.02em; }
+    @keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes textGlow { 0% { text-shadow: 0 0 0 rgba(251,191,36,0); } 100% { text-shadow: 0 0 40px rgba(251,191,36,0.7); } }
+    .splash-tagline { margin-top: 1rem; font-size: 1rem; color: var(--silver); letter-spacing: 2px; opacity: 0; animation: fadeInUp 0.8s ease-out 0.6s forwards; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .splash-pulse { margin-top: 2rem; width: 60px; height: 60px; margin-left: auto; margin-right: auto; border: 2px solid rgba(251,191,36,0.3); border-radius: 50%; animation: pulseRing 1.5s ease-out infinite; }
+    @keyframes pulseRing { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+    body {
+      background: var(--bg-dark);
+      background-image: var(--gradient-bg);
+      color: #edf2f7;
+      min-height: 100vh;
+      padding: 0.75rem;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 1.5rem; opacity: 0; animation: fadeInPage 0.5s ease-out 4.5s forwards; }
+    @keyframes fadeInPage { to { opacity: 1; } }
+    .header h1 { font-size: clamp(2rem, 8vw, 2.8rem); font-weight: 700; background: linear-gradient(140deg, #fcd34d, #a78bfa, #6ee7b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { font-size: 0.9rem; color: var(--silver); display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+    .badge { background: rgba(251,191,36,0.12); padding: 0.2rem 0.9rem; border-radius: 40px; border: 1px solid rgba(251,191,36,0.2); font-size: 0.75rem; color: #fcd34d; }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.8rem;
+      padding: 0.5rem;
+      background: rgba(10,12,17,0.5);
+      backdrop-filter: blur(16px);
+      border-radius: 3rem;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeInPage 0.4s ease-out 4.6s forwards;
+    }
+    .tab-btn { padding: 0.7rem 1.2rem; border: none; border-radius: 3rem; background: transparent; color: var(--silver); font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+    .tab-btn:hover { background: rgba(255,255,255,0.02); color: white; }
+    .tab-btn.active { background: linear-gradient(145deg, #262c36, #1a1e26); color: white; border: 1px solid rgba(251,191,36,0.3); }
+    .tab-panel { display: none; background: var(--bg-panel); border-radius: 2rem; padding: 1.5rem 1.2rem; border: 1px solid rgba(251,191,36,0.08); box-shadow: 0 25px 45px -20px black; }
+    @media (min-width: 640px) { .tab-panel { padding: 2.2rem 2rem; } }
+    .tab-panel.active { display: block; }
+    .selector-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 2rem; }
+    @media (min-width: 640px) { .selector-grid { grid-template-columns: repeat(3, 1fr); } }
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field label { font-size: 0.85rem; font-weight: 500; color: var(--silver-light); margin-left: 0.8rem; text-transform: uppercase; }
+    .field select {
+      background: var(--select-bg);
+      border: 2px solid transparent;
+      border-radius: 2rem;
+      padding: 1rem 1.5rem;
+      color: white;
+      font-size: 1rem;
+      font-weight: 500;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23fbbf24' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1.2rem center;
+      background-size: 20px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .field select option { background-color: #1e2433 !important; color: white !important; }
+    .field select:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(251,191,36,0.3); border-color: #fbbf24; }
+    .check-btn { background: linear-gradient(95deg, #fbbf24, #d97706); border: none; border-radius: 3rem; padding: 1rem 1.5rem; font-weight: 700; font-size: 1.1rem; color: #0b0d10; cursor: pointer; width: 100%; transition: transform 0.2s; }
+    .check-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.4); }
+    .result-card { margin-top: 2rem; background: rgba(0,0,0,0.25); border-radius: 2rem; padding: 1.5rem; display: none; max-height: 500px; overflow-y: auto; }
+    .result-card.visible { display: block; }
+    .part-title { font-size: 1.8rem; font-weight: 600; background: linear-gradient(135deg, #fbbf24, #e5e7eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .criteria-grid { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; max-height: 300px; overflow-y: auto; }
+    .criterion-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.6rem 1rem; background: rgba(255,255,255,0.02); border-radius: 2rem; }
+    .match-badge { padding: 0.2rem 0.9rem; border-radius: 2rem; font-weight: 600; font-size: 0.8rem; }
+    .match-badge.green { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid #10b981; }
+    .match-badge.red { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid #ef4444; }
+    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.6rem; margin: 1rem auto; }
+    .warning-note { background: rgba(245,158,11,0.15); border-left: 3px solid #f59e0b; padding: 0.8rem; border-radius: 1rem; margin-top: 1rem; font-size: 0.85rem; color: #fcd34d; }
+    /* FUSION OVERLAY ANIMATION */
+    #fusionOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5,7,12,0.98);
+      backdrop-filter: blur(20px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #fusionOverlay.active { display: flex; opacity: 1; }
+    .fusion-stage { position: relative; width: min(95vw, 1200px); height: min(90vh, 700px); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(14px); opacity: 0; animation: floatOrb 2.2s ease-out forwards; }
+    .orb.source { background: radial-gradient(circle, #fbbf24, #b45309 80%); box-shadow: 0 0 100px #fbbf24; width: 120px; height: 120px; left: 10%; top: 40%; }
+    .orb.target { background: radial-gradient(circle, #94a3b8, #334155 80%); box-shadow: 0 0 100px #94a3b8; width: 120px; height: 120px; right: 10%; top: 40%; }
+    @media (min-width: 640px) { .orb.source { width: 160px; height: 160px; left: 18%; } .orb.target { width: 160px; height: 160px; right: 18%; } }
+    .fusion-core-glow { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 200px; height: 200px; background: radial-gradient(circle, #10b981, transparent 80%); border-radius: 50%; opacity: 0; animation: coreThrob 2s 0.9s forwards; }
+    .beam { position: absolute; height: 8px; background: linear-gradient(90deg, transparent, #fbbf24, #10b981, #94a3b8, transparent); width: 100%; top: 40%; opacity: 0; animation: beamSlide 1.4s 0.6s forwards; }
+    .bike-tag { position: absolute; font-weight: 700; font-size: 1.2rem; background: rgba(0,0,0,0.7); padding: 0.3rem 1rem; border-radius: 3rem; opacity: 0; animation: fadeTag 0.5s 0.9s forwards; }
+    .tag-left { left: 5%; top: 58%; color: #fbbf24; }
+    .tag-right { right: 5%; top: 58%; color: #cbd5e1; }
+    .tech-comparison-panel { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); display: flex; gap: 1rem; background: rgba(10,12,20,0.9); padding: 0.8rem 1.5rem; border-radius: 3rem; border: 1px solid #fbbf2440; opacity: 0; animation: fadeTag 0.5s 1.2s forwards; flex-wrap: wrap; justify-content: center; }
+    .detailed-specs { position: absolute; bottom: 18%; left: 5%; right: 5%; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; background: rgba(0,0,0,0.7); padding: 1rem; border-radius: 3rem; border: 1px solid #10b98140; opacity: 0; animation: fadeTag 0.5s 1.6s forwards; }
+    .fusion-message { position: absolute; bottom: 5%; text-align: center; font-size: 1.2rem; color: #10b981; opacity: 0; animation: fadeTag 0.5s 2.2s forwards; }
+    @keyframes floatOrb { 0% { opacity: 0; transform: translateY(-50%) scale(0.5); } 100% { opacity: 1; transform: translateY(-50%) scale(1); } }
+    @keyframes coreThrob { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); } }
+    @keyframes beamSlide { 0% { opacity: 0; width: 0%; left: 50%; } 100% { opacity: 0.9; width: 100%; left: 0%; } }
+    @keyframes fadeTag { to { opacity: 1; } }
+    /* AI CHAT */
+    .ai-chat-wrapper { display: flex; flex-direction: column; height: calc(85vh - 120px); min-height: 600px; background: var(--chat-bg); border-radius: 2rem; overflow: hidden; border: 1px solid rgba(251,191,36,0.25); }
+    .ai-chat-header { padding: 1.2rem 1.8rem; background: linear-gradient(135deg, rgba(15,17,23,0.98), rgba(20,22,28,0.98)); border-bottom: 1px solid rgba(251,191,36,0.2); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .ai-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; transform: scale(1.1); } }
+    .ai-header-left h3 { font-size: 1.2rem; font-weight: 600; background: linear-gradient(135deg, #fbbf24, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .ai-badge { background: rgba(251,191,36,0.12); padding: 0.3rem 1rem; border-radius: 40px; border: 1px solid rgba(251,191,36,0.3); font-size: 0.75rem; color: #fcd34d; }
+    .ai-messages { flex: 1; overflow-y: auto; padding: 1.5rem 1.8rem; display: flex; flex-direction: column; gap: 1rem; }
+    .chat-message { display: flex; width: 100%; }
+    .chat-message.user { justify-content: flex-end; }
+    .chat-message.assistant { justify-content: flex-start; }
+    .message-bubble { max-width: 80%; padding: 0.9rem 1.3rem; border-radius: 1.5rem; line-height: 1.5; font-size: 0.95rem; }
+    .chat-message.user .message-bubble { background: linear-gradient(135deg, #10b981, #059669); color: white; border-bottom-right-radius: 0.3rem; }
+    .chat-message.assistant .message-bubble { background: linear-gradient(135deg, rgba(30,34,43,0.98), rgba(25,29,38,0.98)); border: 1px solid rgba(251,191,36,0.25); border-bottom-left-radius: 0.3rem; color: #e2e8f0; }
+    .typing-indicator { display: flex; align-items: center; gap: 6px; padding: 0.8rem 1.2rem; background: linear-gradient(135deg, rgba(30,34,43,0.98), rgba(25,29,38,0.98)); border-radius: 1.5rem; width: fit-content; }
+    .typing-dot { width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; animation: typingBounce 1.4s infinite; }
+    @keyframes typingBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-8px); } }
+    .ai-input-area { padding: 1.2rem 1.5rem; background: rgba(15,17,23,0.98); border-top: 1px solid rgba(251,191,36,0.2); }
+    .input-container { display: flex; gap: 0.8rem; background: #1e222b; border-radius: 2rem; padding: 0.5rem 0.8rem 0.5rem 1.2rem; border: 1px solid rgba(251,191,36,0.25); }
+    .ai-input { flex: 1; background: transparent; border: none; color: white; font-size: 0.95rem; padding: 0.8rem 0; outline: none; resize: none; font-family: inherit; }
+    .send-btn { background: linear-gradient(115deg, #fbbf24, #d97706); border: none; border-radius: 2rem; padding: 0.7rem 1.5rem; font-weight: 600; cursor: pointer; }
+    /* VOICE ASSISTANT */
+    .voice-btn {
+      background: linear-gradient(115deg, #fbbf24, #d97706);
+      border: none;
+      border-radius: 50%;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #0b0d10;
+      font-size: 1.5rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(251,191,36,0.4);
+      flex-shrink: 0;
+    }
+    .voice-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 20px rgba(251,191,36,0.6);
+    }
+    .voice-btn.listening {
+      animation: micPulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes micPulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.2); }
+    }
+    /* MARKETPLACE */
+    .market-header { display: flex; flex-direction: column; gap: 1.2rem; margin-bottom: 2.5rem; }
+    @media (min-width: 640px) { .market-header { flex-direction: row; justify-content: space-between; align-items: center; } }
+    .market-header h2 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #ffffff, #fbbf24, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-primary { background: linear-gradient(115deg, #fbbf24, #d97706); border: none; border-radius: 3rem; padding: 0.7rem 1.8rem; font-weight: 600; color: #0b0d10; cursor: pointer; }
+    .listing-form { background: rgba(20,25,35,0.95); backdrop-filter: blur(16px); border-radius: 2.5rem; padding: 2rem; margin-bottom: 2.5rem; border: 1px solid rgba(251,191,36,0.3); display: none; }
+    .listing-form.visible { display: block; }
+    .form-row { margin-bottom: 1.2rem; }
+    .form-row label { display: block; font-size: 0.9rem; color: #fbbf24; }
+    .form-row input, .form-row select, .form-row textarea { width: 100%; background: rgba(10,15,25,0.8); border: 1px solid #3f4a5a; border-radius: 2rem; padding: 0.9rem 1.5rem; color: white; }
+    .form-row textarea { border-radius: 1.5rem; resize: vertical; }
+    .image-preview { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+    .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 1rem; border: 2px solid #fbbf24; }
+    .market-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2rem; }
+    @media (min-width: 600px) { .market-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 900px) { .market-grid { grid-template-columns: repeat(3, 1fr); } }
+    .product-card { background: linear-gradient(145deg, #1c212b, #151a24); border-radius: 2.2rem; padding: 1.5rem; border: 1px solid rgba(251,191,36,0.2); transition: all 0.35s; }
+    .product-card:hover { transform: translateY(-8px); border-color: #fbbf24; }
+    .product-img-wrapper { position: relative; width: 100%; padding-top: 75%; border-radius: 1.8rem; overflow: hidden; margin-bottom: 1.5rem; background: #0f131c; cursor: pointer; }
+    .product-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    .no-image { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(45deg, #1e2532, #0f1420); font-size: 2rem; }
+    .product-name { font-size: 1.2rem; font-weight: 600; }
+    .product-price { font-size: 1.3rem; color: #fbbf24; font-weight: 700; }
+    .product-spec { font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; }
+    .contact-btn { background: linear-gradient(115deg, #fbbf24, #d97706); border: none; border-radius: 3rem; padding: 0.6rem 2rem; font-weight: 700; cursor: pointer; width: 100%; margin-top: 1rem; }
+    .chat-modal { position: fixed; inset: 0; background: rgba(5,7,12,0.98); backdrop-filter: blur(20px); z-index: 10000; display: none; flex-direction: column; padding: 1rem; }
+    .chat-modal.active { display: flex; }
+    .chat-modal-header { display: flex; justify-content: space-between; padding: 0.8rem 1.5rem; background: #0f1117; border-radius: 3rem; }
+    .chat-modal-messages { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 2rem; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    .modal-message.seller { align-self: flex-start; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3); padding: 0.8rem 1.2rem; border-radius: 1rem; }
+    .modal-message.buyer { align-self: flex-end; background: rgba(16,185,129,0.2); border: 1px solid #10b98140; padding: 0.8rem 1.2rem; border-radius: 1rem; }
+    .chat-modal-footer { display: flex; gap: 0.8rem; background: #0f1117; padding: 1rem; border-radius: 4rem; }
+    .chat-modal-footer input { flex: 1; background: #1e222b; border: none; padding: 1rem 1.5rem; border-radius: 3rem; color: white; outline: none; }
+    .chat-modal-footer button { background: linear-gradient(115deg, #fbbf24, #d97706); border: none; border-radius: 3rem; padding: 0 2rem; font-weight: 700; cursor: pointer; }
+   
+    /* FLOATING 3D ICON */
+    .floating-3d-icon {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, #fbbf24, #d97706, #a855f7);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 9998;
+      box-shadow: 0 0 30px rgba(251,191,36,0.6), 0 10px 25px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+      animation: float3D 3s ease-in-out infinite;
+    }
+    .floating-3d-icon:hover { transform: scale(1.1); box-shadow: 0 0 45px rgba(251,191,36,0.9); }
+    @keyframes float3D { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-12px) rotate(5deg); } }
+    .floating-3d-icon svg { width: 40px; height: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+   
+    /* FLOATING WINDOW */
+    .floating-ai-window {
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+      width: 380px;
+      max-width: calc(100vw - 40px);
+      height: 550px;
+      background: rgba(12, 14, 22, 0.98);
+      backdrop-filter: blur(20px);
+      border-radius: 2rem;
+      border: 1px solid rgba(251,191,36,0.5);
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      display: none;
+      flex-direction: column;
+      z-index: 9999;
+      overflow: hidden;
+    }
+    .floating-ai-window.active { display: flex; }
+    .window-header { padding: 1rem 1.2rem; background: linear-gradient(135deg, #1e232f, #13161f); border-bottom: 1px solid rgba(251,191,36,0.3); display: flex; justify-content: space-between; align-items: center; cursor: move; }
+    .window-header h3 { background: linear-gradient(135deg, #fbbf24, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1rem; }
+    .close-window { background: rgba(255,255,255,0.1); border: none; color: #f87171; font-size: 1.2rem; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .floating-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem; background: #0b0e16; }
+    .floating-input-area { padding: 1rem; border-top: 1px solid rgba(251,191,36,0.2); background: rgba(0,0,0,0.5); }
+    .floating-input-container { display: flex; gap: 0.5rem; background: #1e222b; border-radius: 2rem; padding: 0.5rem 0.8rem; border: 1px solid rgba(251,191,36,0.3); }
+    .floating-input { flex: 1; background: transparent; border: none; color: white; padding: 0.5rem; outline: none; }
+    .floating-send { background: linear-gradient(115deg, #fbbf24, #d97706); border: none; border-radius: 2rem; padding: 0.4rem 1rem; font-weight: 600; cursor: pointer; }
+    .floating-message { display: flex; width: 100%; }
+    .floating-message.user { justify-content: flex-end; }
+    .floating-message.assistant { justify-content: flex-start; }
+    .floating-bubble { max-width: 85%; padding: 0.6rem 1rem; border-radius: 1.2rem; font-size: 0.85rem; line-height: 1.4; }
+    .floating-message.user .floating-bubble { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    .floating-message.assistant .floating-bubble { background: rgba(30,34,43,0.95); border: 1px solid rgba(251,191,36,0.25); color: #e2e8f0; }
+   
+    footer { margin-top: 2.5rem; text-align: center; color: #5f6b7a; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="splash-screen" id="splashScreen"><div class="splash-content"><div class="splash-logo">⚡ SPARE SYNC ⚡</div><div class="splash-tagline">50+ PARTS · AI PARTS MATCHING</div><div class="splash-pulse"></div></div></div>
+<div class="container">
+  <div class="header"><h1>⚡ SPARE SYNC ⚡</h1><div class="subtitle"><span class="badge">26 BIKES · 52 PARTS</span><span class="badge">AI COMPATIBILITY ENGINE</span><span class="badge">REAL-TIME MATCHING</span></div></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-panel="checker">🔧 COMPATIBILITY</button>
+    <button class="tab-btn" data-panel="chat">🧠 AI ASSISTANT</button>
+    <button class="tab-btn" data-panel="market">🛒 MARKETPLACE</button>
+  </div>
+  <div id="checkerPanel" class="tab-panel active">
+    <div class="selector-grid"><div class="field"><label>🏍️ SOURCE BIKE</label><select id="srcBike"></select></div><div class="field"><label>🎯 TARGET BIKE</label><select id="tgtBike"></select></div><div class="field"><label>🔩 PART (52 options)</label><select id="partSelect"></select></div></div>
+    <button class="check-btn" onclick="initiateCompatibility()"><span>✨ ANALYZE COMPATIBILITY ✨</span></button>
+    <div id="resultPanel" class="result-card"></div>
+  </div>
+  <div id="chatPanel" class="tab-panel">
+    <div class="ai-chat-wrapper"><div class="ai-chat-header"><div class="ai-header-left"><div class="ai-status"><div class="status-dot"></div><h3>SPARE SYNC AI</h3></div></div><div class="ai-badge">CHATBOT + VOICE ASSITANT</div></div>
+      <div class="ai-messages" id="aiMessages"><div class="chat-message assistant"><div class="message-bubble"><strong>🧠 AI Compatibility Expert</strong><br>I understand natural language, spelling mistakes, and partial names. Ask me anything about bikes and parts!<br><small>🎤 Tap the mic for voice input</small></div></div></div>
+      <div class="ai-input-area"><div class="input-container"><textarea class="ai-input" id="aiChatInput" rows="1" placeholder="Ask about bikes or parts..."></textarea><button class="voice-btn" id="aiVoiceBtn" title="Voice Input">🎤</button><button class="send-btn" id="aiSendBtn">SEND</button></div></div>
+    </div>
+  </div>
+  <div id="marketPanel" class="tab-panel">
+    <div class="market-header"><h2>🛒 PREMIUM PARTS MARKET</h2><button class="btn-primary" onclick="toggleListingForm()">➕ SELL PART</button></div>
+    <div id="listingForm" class="listing-form">
+      <h3>📸 List your part with images</h3>
+      <div class="form-row"><label>Part name</label><input type="text" id="partName" placeholder="e.g., Front Disc Rotor"></div>
+      <div class="form-row"><label>Category</label><select id="partCategory"><option>brake</option><option>engine</option><option>suspension</option><option>transmission</option><option>electrical</option></select></div>
+      <div class="form-row"><label>Specifications / Description</label><textarea id="partSpec" rows="3" placeholder="Compatible models, condition, size, etc..."></textarea></div>
+      <div class="form-row"><label>Price (₹)</label><input type="number" id="partPrice" placeholder="e.g., 2850"></div>
+      <div class="form-row"><label>Seller Name</label><input type="text" id="sellerName" placeholder="Your name or shop"></div>
+      <div class="form-row"><label>Contact (Phone/Email)</label><input type="text" id="sellerPhone" placeholder="+91 XXXXXXXXXX"></div>
+      <div class="form-row"><label>Upload Images (up to 3 images)</label><input type="file" id="imageUpload" accept="image/*" multiple onchange="previewImages()"></div>
+      <div class="image-preview" id="imagePreview"></div>
+      <button class="btn-primary" onclick="publishListing()">Publish Listing</button>
+      <button onclick="toggleListingForm()">Cancel</button>
+    </div>
+    <div class="market-grid" id="marketGrid"></div>
+  </div>
+  <footer>26 premium bikes · 52 parts · AI compatibility engine · Real-time matching · Voice Assistant</footer>
+</div>
+<!-- FLOATING 3D ICON -->
+<div class="floating-3d-icon" id="floatingIcon">
+  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M12 2a10 10 0 0 1 10 10c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2z"/><path d="M9 12h.01M15 12h.01M12 16c1.5 0 2.5-1 3-2"/><circle cx="9" cy="12" r="1" fill="white"/><circle cx="15" cy="12" r="1" fill="white"/></svg>
+</div>
+<!-- FLOATING AI WINDOW -->
+<div id="floatingWindow" class="floating-ai-window">
+  <div class="window-header" id="windowHeader"><h3>✨ AI Compatibility Expert</h3><button class="close-window" id="closeFloatingBtn">✕</button></div>
+  <div class="floating-messages" id="floatingMessages"><div class="floating-message assistant"><div class="floating-bubble"><strong>🤖 AI Assistant</strong><br>Ask about any part compatibility!<br><small>🎤 Tap mic for voice</small></div></div></div>
+  <div class="floating-input-area"><div class="floating-input-container"><input type="text" class="floating-input" id="floatingInput" placeholder="Ask about parts..."><button class="voice-btn" id="floatVoiceBtn" title="Voice Input" style="width:44px;height:44px;font-size:1.2rem;">🎤</button><button class="floating-send" id="floatingSendBtn">Send</button></div></div>
+</div>
+<div id="fusionOverlay">
+  <div class="fusion-stage">
+    <div class="orb source"></div>
+    <div class="orb target"></div>
+    <div class="beam"></div>
+    <div class="fusion-core-glow"></div>
+    <div class="bike-tag tag-left" id="sourceTag"></div>
+    <div class="bike-tag tag-right" id="targetTag"></div>
+    <div class="tech-comparison-panel" id="techComparisonTop"></div>
+    <div class="detailed-specs" id="detailedSpecs"></div>
+    <div class="fusion-message">🔬 AI MATCH · REALISTIC COMPATIBILITY ANALYSIS</div>
+  </div>
+</div>
+<div id="chatModal" class="chat-modal"><div class="chat-modal-header"><span id="modalSellerInfo"></span><button onclick="closeChatModal()">✖</button></div><div class="chat-modal-messages" id="chatModalMessages"></div><div class="chat-modal-footer"><input id="modalChatInput" placeholder="Type your message..." onkeydown="if(event.key==='Enter'){event.preventDefault(); sendModalMessage();}"><button onclick="sendModalMessage()">SEND</button></div></div>
+<script>
+setTimeout(() => { const splash = document.getElementById('splashScreen'); if(splash) splash.style.display = 'none'; }, 5000);
+// 26 BIKES DATABASE (20 original + 6 new)
+const bikes = {
+  classic350: { name: "Royal Enfield Classic 350", cc: "350cc", cooling: "air-cooled", frontDisc: "300mm", rearDisc: "yes", chain: "530", wheel: "18\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "RE350" },
+  hunter350: { name: "Royal Enfield Hunter 350", cc: "350cc", cooling: "air-cooled", frontDisc: "300mm", rearDisc: "yes", chain: "530", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "HUNTER" },
+  interceptor650: { name: "Interceptor 650", cc: "650cc", cooling: "air-cooled", frontDisc: "320mm", rearDisc: "yes", chain: "530", wheel: "18\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "INT650" },
+  continental650: { name: "Continental GT 650", cc: "650cc", cooling: "air-cooled", frontDisc: "320mm", rearDisc: "yes", chain: "530", wheel: "18\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "GT650" },
+  ns200: { name: "Bajaj NS200", cc: "199cc", cooling: "liquid", frontDisc: "300mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "NS200" },
+  dominar400: { name: "Dominar 400", cc: "400cc", cooling: "liquid", frontDisc: "320mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "DOM400" },
+  duke390: { name: "KTM Duke 390", cc: "390cc", cooling: "liquid", frontDisc: "320mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "D390" },
+  rc390: { name: "KTM RC 390", cc: "390cc", cooling: "liquid", frontDisc: "320mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "RC390" },
+  apache200: { name: "TVS Apache 200", cc: "197cc", cooling: "oil", frontDisc: "270mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "A200" },
+  apache160: { name: "TVS Apache 160", cc: "159cc", cooling: "air-cooled", frontDisc: "270mm", rearDisc: "no", chain: "428", wheel: "17\"", abs: "no", fork: "telescopic", brake: "single", ecuCode: "A160" },
+  mt15: { name: "Yamaha MT-15", cc: "155cc", cooling: "liquid", frontDisc: "282mm", rearDisc: "yes", chain: "428", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "MT15" },
+  r15: { name: "Yamaha R15", cc: "155cc", cooling: "liquid", frontDisc: "282mm", rearDisc: "yes", chain: "428", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "R15" },
+  fzsv3: { name: "Yamaha FZ-S V3", cc: "149cc", cooling: "air-cooled", frontDisc: "282mm", rearDisc: "yes", chain: "428", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "FZS" },
+  pulsar220: { name: "Pulsar 220F", cc: "220cc", cooling: "oil", frontDisc: "260mm", rearDisc: "no", chain: "428", wheel: "17\"", abs: "no", fork: "telescopic", brake: "single", ecuCode: "P220" },
+  pulsar150: { name: "Pulsar 150", cc: "149cc", cooling: "air-cooled", frontDisc: "240mm", rearDisc: "no", chain: "428", wheel: "17\"", abs: "no", fork: "telescopic", brake: "single", ecuCode: "P150" },
+  gixxer: { name: "Suzuki Gixxer", cc: "155cc", cooling: "air", frontDisc: "266mm", rearDisc: "yes", chain: "428", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "GIX" },
+  cbr250: { name: "Honda CBR250R", cc: "250cc", cooling: "liquid", frontDisc: "296mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "CBR250" },
+  hornet: { name: "Honda Hornet 2.0", cc: "184cc", cooling: "air-cooled", frontDisc: "276mm", rearDisc: "yes", chain: "428", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "HORNET" },
+  ktm250: { name: "KTM Duke 250", cc: "250cc", cooling: "liquid", frontDisc: "300mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "K250" },
+  benelli302: { name: "Benelli 302R", cc: "300cc", cooling: "liquid", frontDisc: "260mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "BEN302" },
+  ninja300: { name: "Kawasaki Ninja 300", cc: "296cc", cooling: "liquid", frontDisc: "290mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "NINJA300" },
+  bmw310: { name: "BMW G310R", cc: "313cc", cooling: "liquid", frontDisc: "300mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "upside-down", brake: "dual", ecuCode: "BMW310" },
+  xpulse: { name: "Hero Xpulse 200", cc: "199cc", cooling: "oil", frontDisc: "276mm", rearDisc: "yes", chain: "428", wheel: "21\"", abs: "single", fork: "telescopic", brake: "single", ecuCode: "XPULSE" },
+  cb350: { name: "Honda CB350", cc: "348cc", cooling: "air-cooled", frontDisc: "310mm", rearDisc: "yes", chain: "530", wheel: "18\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "CB350" },
+  vstrom250: { name: "Suzuki V-Strom 250", cc: "248cc", cooling: "liquid", frontDisc: "300mm", rearDisc: "yes", chain: "520", wheel: "17\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "VSTROM" },
+  scram411: { name: "Royal Enfield Scram 411", cc: "411cc", cooling: "air-cooled", frontDisc: "300mm", rearDisc: "yes", chain: "530", wheel: "19\"", abs: "dual", fork: "telescopic", brake: "dual", ecuCode: "SCRAM411" }
+};
+// 52 PARTS (same as before)
+const parts = [];
+const partNames = [
+  "Front Disc Rotor", "Rear Disc Rotor", "Chain & Sprocket Kit", "Front Fork Assembly", "Rear Shock Absorber",
+  "Radiator", "ABS Module", "ECU", "Front Brake Caliper", "Master Cylinder", "Front Wheel", "Rear Wheel",
+  "Clutch Plates", "Headlight Assembly", "Tail Light", "Indicator Set", "Handlebar", "Grips", "Footpeg Set",
+  "Side Stand", "Main Stand", "Brake Lever", "Clutch Lever", "Throttle Cable", "Clutch Cable", "Speedometer",
+  "Fuel Tank", "Seat Assembly", "Muffler", "Air Filter", "Oil Filter", "Fuel Pump", "Starter Motor",
+  "Alternator", "Battery", "Spark Plug", "Ignition Coil", "CDI Unit", "Regulator Rectifier", "Swingarm",
+  "Chain Guard", "Front Sprocket", "Rear Sprocket", "Brake Pads", "Engine Oil Cooler", "Coolant Tank",
+  "Fork Seal Kit", "Wheel Bearing", "Swingarm Bushing", "Throttle Body", "Fuel Injector", "O2 Sensor"
+];
+const partCritMap = {
+  "Front Disc Rotor": ["frontDisc", "wheel"], "Rear Disc Rotor": ["rearDisc", "wheel"], "Chain & Sprocket Kit": ["chain"],
+  "Front Fork Assembly": ["fork", "wheel"], "Rear Shock Absorber": ["cc"], "Radiator": ["cooling"], "ABS Module": ["abs", "brake"],
+  "ECU": ["ecuCode"], "Front Brake Caliper": ["frontDisc"], "Master Cylinder": ["brake"], "Front Wheel": ["wheel", "frontDisc"],
+  "Rear Wheel": ["wheel", "chain"], "Clutch Plates": ["cc"], "Headlight Assembly": [], "Handlebar": ["fork"], "Swingarm": ["wheel"],
+  "Chain Guard": ["chain"], "Front Sprocket": ["chain"], "Rear Sprocket": ["chain"], "Brake Pads": ["brake"], "CDI Unit": ["ecuCode"],
+  "Fuel Pump": ["cc"], "Starter Motor": ["cc"], "Battery": ["cc"], "Spark Plug": ["cc"]
+};
+partNames.forEach((name, idx) => {
+  let crit = partCritMap[name] || ["cc"];
+  let isEcu = name === "ECU" || name === "CDI Unit";
+  parts.push({ id: `part_${idx}`, name: name, keywords: [name.toLowerCase()], crit: crit, isEcu: isEcu, specialNote: isEcu ? "ECU is model-specific!" : null });
+});
+// Fuzzy matching functions (same as before)
+function fuzzyMatch(str, pattern) {
+  const s = str.toLowerCase(), p = pattern.toLowerCase();
+  if (s.includes(p)) return true;
+  if (p.includes(s) && s.length > 3) return true;
+  let matches = 0;
+  for (let i = 0; i < Math.min(s.length, p.length); i++) if (s[i] === p[i]) matches++;
+  return matches / Math.max(s.length, p.length) > 0.65;
+}
+function detectBike(query) {
+  const lower = query.toLowerCase();
+  let bestMatch = null, bestScore = 0;
+  let bikeNameExtract = null;
+  const patterns = [/my\s+bike\s+is\s+([a-z0-9\s]+)/i, /i\s+have\s+([a-z0-9\s]+)/i, /bike\s+([a-z0-9\s]+)/i, /([a-z0-9\s]+)\s+bike/i];
+  for (let pattern of patterns) { const match = lower.match(pattern); if (match && match[1]) { bikeNameExtract = match[1].trim(); break; } }
+  const searchTerm = bikeNameExtract || lower;
+  for (let [key, bike] of Object.entries(bikes)) {
+    let score = 0;
+    const bikeLower = bike.name.toLowerCase();
+    if (bikeLower.includes(searchTerm) || searchTerm.includes(bikeLower)) score += 100;
+    const searchWords = searchTerm.split(/\s+/), bikeWords = bikeLower.split(/\s+/);
+    for (let sw of searchWords) if (sw.length > 2) for (let bw of bikeWords) if (fuzzyMatch(sw, bw)) score += 20;
+    const modelMatch = searchTerm.match(/\d+/g);
+    if (modelMatch) for (let m of modelMatch) if (bikeLower.includes(m)) score += 25;
+    if (score > bestScore) { bestScore = score; bestMatch = key; }
+  }
+  return bestScore > 15 ? bestMatch : null;
+}
+function detectPart(query) {
+  const lower = query.toLowerCase();
+  let bestMatch = null, bestScore = 0;
+  for (let part of parts) {
+    let score = 0;
+    const partLower = part.name.toLowerCase();
+    if (partLower.includes(lower) || lower.includes(partLower)) score += 100;
+    for (let kw of part.keywords) if (fuzzyMatch(lower, kw)) score += 30;
+    const partWords = partLower.split(/\s+/), queryWords = lower.split(/\s+/);
+    for (let pw of partWords) for (let qw of queryWords) if (qw.length > 2 && (pw.includes(qw) || qw.includes(pw))) score += 10;
+    if (score > bestScore) { bestScore = score; bestMatch = part; }
+  }
+  return bestScore > 15 ? bestMatch : null;
+}
+function processNLPQuery(query, isFloating = false) {
+  const bikeMatch = detectBike(query);
+  if (bikeMatch) { const bike = bikes[bikeMatch]; return `✅ Bike set to **${bike.name}** (${bike.cc}, ${bike.cooling}-cooled). Now you can ask about any part compatibility!`; }
+  const partMatch = detectPart(query);
+  if (partMatch) {
+    const currentBike = isFloating ? floatUserBike : userBikeModel;
+    if (!currentBike) return "⚠️ Please tell me your bike first (e.g., 'my bike is classic 350' or 'i have ns200').";
+    const src = bikes[currentBike];
+    if (partMatch.isEcu) return `⚠️ **ECU Warning** - The ECU from ${src.name} is ONLY compatible with another ${src.name} of the same generation.`;
+    let suggestions = [];
+    for (let [key, bike] of Object.entries(bikes)) if (key !== currentBike) {
+      let matchCount = 0;
+      partMatch.crit.forEach(c => { if (bike[c] === src[c]) matchCount++; });
+      const percent = partMatch.crit.length > 0 ? Math.round((matchCount / partMatch.crit.length) * 100) : 50;
+      suggestions.push({ name: bike.name, percent: percent });
+    }
+    suggestions.sort((a,b) => b.percent - a.percent);
+    let reply = `<strong>${partMatch.name}</strong> compatibility from <strong>${src.name}</strong> (${src.cc}):<br><br>`;
+    reply += `<strong>Top compatible bikes:</strong><br>`;
+    suggestions.slice(0,6).forEach(s => { const emoji = s.percent >= 80 ? '✅' : (s.percent >= 60 ? '🟡' : (s.percent >= 40 ? '🟠' : '🔴')); reply += `${emoji} ${s.name} — <strong>${s.percent}%</strong> match<br>`; });
+    return reply;
+  }
+  if (query.toLowerCase().includes('hello') || query.toLowerCase().includes('hi')) return "👋 Hello! Tell me your bike and I'll help find compatible parts!";
+  return "🤔 Try: 'my bike is ns200' or 'front disc compatibility'";
+}
+// MAIN AI
+let userBikeModel = null, isThinking = false;
+const msgContainer = document.getElementById('aiMessages'), chatInp = document.getElementById('aiChatInput'), sendBtn = document.getElementById('aiSendBtn');
+function addMsg(content, isUser) { const w = document.createElement('div'); w.className = `chat-message ${isUser ? 'user' : 'assistant'}`; w.innerHTML = `<div class="message-bubble">${content}</div>`; msgContainer.appendChild(w); msgContainer.scrollTop = msgContainer.scrollHeight; }
+async function handleSendAI() { if(isThinking) return; const msg = chatInp.value.trim(); if(!msg) return; isThinking=true; addMsg(msg,true); chatInp.value=''; const typingDiv=document.createElement('div'); typingDiv.className='chat-message assistant'; typingDiv.id='typingAI'; typingDiv.innerHTML='<div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>'; msgContainer.appendChild(typingDiv); setTimeout(()=>{ typingDiv.remove(); const response = processNLPQuery(msg, false); if(response.includes('Bike set to')) { const match = detectBike(msg); if(match) userBikeModel = match; } addMsg(response,false); speakAIResponse(response); isThinking=false; },600); }
+sendBtn.addEventListener('click', handleSendAI);
+chatInp.addEventListener('keydown', e=>{ if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendAI(); } });
+// FLOATING WINDOW
+const floatingIcon = document.getElementById('floatingIcon'), floatingWindow = document.getElementById('floatingWindow'), closeFloatingBtn = document.getElementById('closeFloatingBtn');
+const floatingMsgs = document.getElementById('floatingMessages'), floatingInput = document.getElementById('floatingInput'), floatingSend = document.getElementById('floatingSendBtn');
+floatingIcon.onclick = () => floatingWindow.classList.add('active');
+closeFloatingBtn.onclick = () => floatingWindow.classList.remove('active');
+let floatUserBike = null, floatThinking = false;
+function addFloatMsg(content, isUser) { const div = document.createElement('div'); div.className = `floating-message ${isUser ? 'user' : 'assistant'}`; div.innerHTML = `<div class="floating-bubble">${content}</div>`; floatingMsgs.appendChild(div); floatingMsgs.scrollTop = floatingMsgs.scrollHeight; }
+async function sendFloatMsg() { if(floatThinking) return; const msg = floatingInput.value.trim(); if(!msg) return; floatThinking=true; addFloatMsg(msg,true); floatingInput.value=''; const typingDiv=document.createElement('div'); typingDiv.className='floating-message assistant'; typingDiv.id='floatTyping'; typingDiv.innerHTML='<div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>'; floatingMsgs.appendChild(typingDiv); setTimeout(()=>{ typingDiv.remove(); const response = processNLPQuery(msg, true); if(response.includes('Bike set to')) { const match = detectBike(msg); if(match) floatUserBike = match; } addFloatMsg(response,false); speakAIResponse(response); floatThinking=false; },600); }
+floatingSend.addEventListener('click', sendFloatMsg);
+floatingInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') { e.preventDefault(); sendFloatMsg(); } });
+// COMPATIBILITY CHECKER WITH FUSION ANIMATION
+const srcSelect = document.getElementById('srcBike'), tgtSelect = document.getElementById('tgtBike'), partSelect = document.getElementById('partSelect');
+Object.keys(bikes).forEach(k => { srcSelect.add(new Option(bikes[k].name, k)); tgtSelect.add(new Option(bikes[k].name, k)); });
+parts.forEach(p => partSelect.add(new Option(p.name, p.id)));
+window.initiateCompatibility = function() {
+  const srcKey = srcSelect.value, tgtKey = tgtSelect.value, partId = partSelect.value;
+  const srcBike = bikes[srcKey], tgtBike = bikes[tgtKey], part = parts.find(p => p.id === partId);
+  if(!srcBike || !tgtBike || !part) return alert('Select all fields');
+ 
+  document.getElementById('sourceTag').innerText = srcBike.name.split(' ')[0];
+  document.getElementById('targetTag').innerText = tgtBike.name.split(' ')[0];
+  let topHtml = ''; part.crit.slice(0,4).forEach(c => { topHtml += `<div><strong>${c.toUpperCase()}:</strong> ${srcBike[c]||'N/A'} → ${tgtBike[c]||'N/A'}</div>`; });
+  document.getElementById('techComparisonTop').innerHTML = topHtml;
+  document.getElementById('detailedSpecs').innerHTML = `<div><strong>DISPLACEMENT:</strong> ${srcBike.cc} → ${tgtBike.cc}</div><div><strong>COOLING:</strong> ${srcBike.cooling} → ${tgtBike.cooling}</div><div><strong>CHAIN:</strong> ${srcBike.chain} → ${tgtBike.chain}</div>`;
+ 
+  const overlay = document.getElementById('fusionOverlay');
+  overlay.classList.add('active');
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    let matchCount = 0, itemsHtml = '';
+    part.crit.forEach(c => {
+      let sVal = srcBike[c], tVal = tgtBike[c];
+      let match = false;
+      if(part.isEcu) match = (srcKey === tgtKey);
+      else if(sVal && tVal && sVal === tVal) match = true;
+      if(match && !part.isEcu) matchCount++;
+      itemsHtml += `<div class="criterion-item"><span><strong>${c}:</strong> ${sVal||'N/A'} → ${tVal||'N/A'}</span><span class="match-badge ${match?'green':'red'}">${match?'✅ Compatible':'❌ Not'}</span></div>`;
+    });
+    let percent = part.isEcu ? (srcKey === tgtKey ? 100 : 0) : Math.round((matchCount / part.crit.length) * 100);
+    let verdict = percent >= 80 ? '✅ FULLY COMPATIBLE' : (percent >= 50 ? '🟡 PARTIAL' : '🔴 NOT COMPATIBLE');
+    document.getElementById('resultPanel').innerHTML = `<div class="part-title">${part.name}</div><div class="criteria-grid">${itemsHtml}</div><div class="score-circle" style="background:conic-gradient(#10b981 0% ${percent}%, #3f3f46 ${percent}% 100%)"><span>${percent}%</span></div><div>${verdict}</div>`;
+    document.getElementById('resultPanel').classList.add('visible');
+  }, 3200);
+};
+// Marketplace functions with image upload
+let listings = JSON.parse(localStorage.getItem('marketListings')) || [];
+let currentImages = [];
+if(listings.length === 0) listings = [{ name: "Front Disc Rotor", category: "brake", spec: "300mm, compatible with NS200, Duke 250", price: 2850, seller: "MotoSpares", phone: "+91 9876543210", imgData: [] }];
+window.previewImages = function() {
+  const files = document.getElementById('imageUpload').files;
+  const preview = document.getElementById('imagePreview');
+  preview.innerHTML = '';
+  currentImages = [];
+  for(let i = 0; i < Math.min(files.length, 3); i++) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'preview-img';
+      preview.appendChild(img);
+      currentImages.push(e.target.result);
+    };
+    reader.readAsDataURL(files[i]);
+  }
+};
+window.toggleListingForm = () => document.getElementById('listingForm').classList.toggle('visible');
+window.publishListing = function() {
+  const n = document.getElementById('partName').value;
+  const c = document.getElementById('partCategory').value;
+  const spec = document.getElementById('partSpec').value;
+  const p = document.getElementById('partPrice').value;
+  const s = document.getElementById('sellerName').value;
+  const ph = document.getElementById('sellerPhone').value;
+  if(!n || !p || !s) return alert('Please fill all required fields');
+  listings.unshift({name:n, category:c, spec:spec, price:Number(p), seller:s, phone:ph, imgData:currentImages.slice()});
+  localStorage.setItem('marketListings', JSON.stringify(listings));
+  toggleListingForm();
+  renderMarketplace();
+  document.getElementById('partName').value = '';
+  document.getElementById('partSpec').value = '';
+  document.getElementById('partPrice').value = '';
+  document.getElementById('sellerName').value = '';
+  document.getElementById('sellerPhone').value = '';
+  document.getElementById('imagePreview').innerHTML = '';
+  currentImages = [];
+};
+window.renderMarketplace = function() {
+  document.getElementById('marketGrid').innerHTML = listings.map(item => `<div class="product-card"><div class="product-img-wrapper">${item.imgData && item.imgData.length > 0 ? `<img class="product-img" src="${item.imgData[0]}" alt="${item.name}">` : '<div class="no-image">📷 No Image</div>'}</div><div class="product-name">${item.name}</div><div class="product-price">₹${item.price}</div><div class="product-spec">📝 ${item.spec || 'No specs provided'}</div><div class="product-seller">👤 ${item.seller} | 📞 ${item.phone}</div><button class="contact-btn" onclick="openChatModal('${item.seller}','${item.phone}')">💬 CHAT</button></div>`).join('');
+};
+window.openChatModal = (name, phone) => {
+  document.getElementById('modalSellerInfo').innerHTML = `Chat with ${name}`;
+  document.getElementById('chatModalMessages').innerHTML = '';
+  const welcomeMsg = document.createElement('div');
+  welcomeMsg.className = 'modal-message seller';
+  welcomeMsg.innerText = `👋 Hello! I'm ${name}. Ask me about my parts!`;
+  document.getElementById('chatModalMessages').appendChild(welcomeMsg);
+  document.getElementById('chatModal').classList.add('active');
+  document.getElementById('modalChatInput').focus();
+};
+window.closeChatModal = () => document.getElementById('chatModal').classList.remove('active');
+window.sendModalMessage = function() {
+  const inp = document.getElementById('modalChatInput');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'modal-message buyer';
+  msgDiv.innerText = msg;
+  document.getElementById('chatModalMessages').appendChild(msgDiv);
+  inp.value = '';
+  setTimeout(()=>{
+    const reply = document.createElement('div');
+    reply.className = 'modal-message seller';
+    reply.innerText = 'Thanks for your interest! The seller will respond shortly.';
+    document.getElementById('chatModalMessages').appendChild(reply);
+    document.getElementById('chatModalMessages').scrollTop = document.getElementById('chatModalMessages').scrollHeight;
+  }, 800);
+  document.getElementById('chatModalMessages').scrollTop = document.getElementById('chatModalMessages').scrollHeight;
+};
+renderMarketplace();
+// Drag for floating window
+let drag = false, offX=0, offY=0;
+const header = document.getElementById('windowHeader');
+header.addEventListener('mousedown', e=>{ if(e.target === closeFloatingBtn) return; drag=true; offX=e.clientX-floatingWindow.offsetLeft; offY=e.clientY-floatingWindow.offsetTop; floatingWindow.style.position='fixed'; document.addEventListener('mousemove', onFloatMove); document.addEventListener('mouseup', onFloatUp); });
+function onFloatMove(e){ if(!drag) return; let l=e.clientX-offX, t=e.clientY-offY; l=Math.min(window.innerWidth-floatingWindow.offsetWidth-10,Math.max(10,l)); t=Math.min(window.innerHeight-floatingWindow.offsetHeight-10,Math.max(10,t)); floatingWindow.style.left=l+'px'; floatingWindow.style.top=t+'px'; floatingWindow.style.right='auto'; floatingWindow.style.bottom='auto'; }
+function onFloatUp(){ drag=false; document.removeEventListener('mousemove',onFloatMove); document.removeEventListener('mouseup',onFloatUp); }
+document.querySelectorAll('.tab-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); btn.classList.add('active'); document.getElementById(btn.dataset.panel+'Panel').classList.add('active'); }); });
+
+// === VOICE ASSISTANT (added without changing any other logic) ===
+let recognition = null;
+let isListening = false;
+let currentChatTarget = null;
+
+function initVoiceRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return false;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-IN'; // Best for Indian English (Kolkata region)
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    if (currentChatTarget === 'main') {
+      const inputEl = document.getElementById('aiChatInput');
+      if (inputEl) inputEl.value = transcript;
+      handleSendAI();
+    } else if (currentChatTarget === 'floating') {
+      const inputEl = document.getElementById('floatingInput');
+      if (inputEl) inputEl.value = transcript;
+      sendFloatMsg();
+    }
+    stopListeningUI();
+  };
+  recognition.onerror = (event) => {
+    console.error('Voice error:', event.error);
+    stopListeningUI();
+    if (event.error === 'no-speech') {
+      alert('No speech detected. Try speaking louder or closer to the microphone.');
+    } else {
+      alert('Voice recognition failed. Please allow microphone access.');
+    }
+  };
+  recognition.onend = stopListeningUI;
+  return true;
+}
+
+function stopListeningUI() {
+  isListening = false;
+  currentChatTarget = null;
+  document.querySelectorAll('.voice-btn').forEach(btn => btn.classList.remove('listening'));
+}
+
+function startVoiceAssistant(target) {
+  if (!recognition) {
+    const supported = initVoiceRecognition();
+    if (!supported) {
+      alert('Voice Assistant is not supported in your browser.\nPlease use Chrome, Edge, or Safari.');
+      return;
+    }
+  }
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+  currentChatTarget = target;
+  isListening = true;
+  document.querySelectorAll('.voice-btn').forEach(btn => btn.classList.remove('listening'));
+  let activeBtn = target === 'main' 
+    ? document.getElementById('aiVoiceBtn') 
+    : document.getElementById('floatVoiceBtn');
+  if (activeBtn) activeBtn.classList.add('listening');
+  try { recognition.start(); } catch(e) { stopListeningUI(); }
+}
+
+// Voice output (text-to-speech) for AI replies
+function speakAIResponse(htmlContent) {
+  if (!('speechSynthesis' in window)) return;
+  const cleanText = htmlContent
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleanText) return;
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = 'en-IN';
+  utterance.pitch = 1.05;
+  utterance.rate = 0.98;
+  speechSynthesis.speak(utterance);
+}
+
+// Attach voice buttons (only after DOM is ready)
+const aiVoiceBtn = document.getElementById('aiVoiceBtn');
+const floatVoiceBtn = document.getElementById('floatVoiceBtn');
+if (aiVoiceBtn) aiVoiceBtn.addEventListener('click', () => startVoiceAssistant('main'));
+if (floatVoiceBtn) floatVoiceBtn.addEventListener('click', () => startVoiceAssistant('floating'));
+</script>
+</body>
+</html>
