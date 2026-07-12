@@ -164,23 +164,6 @@ Recommended browsers include:
 * Microsoft Edge
 * Mozilla Firefox
 
-### Installation
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-```
-
-Navigate to the project directory:
-
-```bash
-cd spare-sync
-```
-
-Open `index.html` in a web browser.
-
-No dependency installation or build process is required.
 
 ## Usage
 
